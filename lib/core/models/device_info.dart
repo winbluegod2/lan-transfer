@@ -22,7 +22,7 @@ class DeviceInfo {
 
   static DeviceInfo? fromQrData(String data) {
     try {
-      return fromJson(jsonDecode(data));
+      return DeviceInfo.fromJson(jsonDecode(data) as Map<String, dynamic>);
     } catch (_) {
       return null;
     }
