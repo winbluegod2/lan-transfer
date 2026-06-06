@@ -113,30 +113,23 @@ jobs:
 
       - name: Set macOS deployment target to 10.15
         run: |
-          # 1. Podfile
-          python3 -c "
-import re
-f = 'macos/Podfile'
-c = open(f).read()
-c = re.sub(r'#?\s*platform :osx,.*\n?', '', c)
-c = \"platform :osx, '10.15'\n\" + c
-open(f, 'w').write(c)
-print(open(f).readlines()[:3])
-"
-          # 2. project.pbxproj
-          find macos -name "project.pbxproj" \
-            -exec sed -i '' \
-              's/MACOSX_DEPLOYMENT_TARGET = [0-9.]*/MACOSX_DEPLOYMENT_TARGET = 10.15/g' \
-            {} \;
-          # 3. 所有 xcconfig（Flutter 用这些覆盖 pbxproj）
-          find macos -name "*.xcconfig" | while read f; do
-            sed -i '' \
-              's/MACOSX_DEPLOYMENT_TARGET = [0-9.]*/MACOSX_DEPLOYMENT_TARGET = 10.15/g' \
-              "$f"
-          done
-          # 4. 追加到 AppInfo.xcconfig 确保生效
-          echo "MACOSX_DEPLOYMENT_TARGET = 10.15" \
-            >> macos/Runner/Configs/AppInfo.xcconfig
+          cat > /tmp/patch_podfile.py << 'EOF'
+          import re, sys
+          f = sys.argv[1]
+          plat = sys.argv[2]
+          key = sys.argv[3]
+          c = open(f).read()
+          c = re.sub(r'#?\s*' + key + r',.*\n?', '', c)
+          c = key + ", '" + plat + "'\n" + c
+          open(f, 'w').write(c)
+          print('Patched', f, open(f).readlines()[:2])
+          EOF
+          python3 /tmp/patch_podfile.py macos/Podfile 10.15 "platform :osx"
+          find macos -name "project.pbxproj" -exec \
+            sed -i '' 's/MACOSX_DEPLOYMENT_TARGET = [0-9.]*/MACOSX_DEPLOYMENT_TARGET = 10.15/g' {} \;
+          find macos -name "*.xcconfig" -exec \
+            sed -i '' 's/MACOSX_DEPLOYMENT_TARGET = [0-9.]*/MACOSX_DEPLOYMENT_TARGET = 10.15/g' {} \;
+          echo "MACOSX_DEPLOYMENT_TARGET = 10.15" >> macos/Runner/Configs/AppInfo.xcconfig
 
       - name: Build macOS release
         env:
@@ -198,29 +191,11 @@ print(open(f).readlines()[:3])
 
       - name: Set iOS deployment target to 13.0
         run: |
-          # 1. Podfile
-          python3 -c "
-import re
-f = 'ios/Podfile'
-c = open(f).read()
-c = re.sub(r'#?\s*platform :ios,.*\n?', '', c)
-c = \"platform :ios, '13.0'\n\" + c
-open(f, 'w').write(c)
-print(open(f).readlines()[:3])
-"
-          # 2. project.pbxproj
-          find ios -name "project.pbxproj" \
-            -exec sed -i '' \
-              's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*/IPHONEOS_DEPLOYMENT_TARGET = 13.0/g' \
-            {} \;
-          # 3. xcconfig
-          find ios -name "*.xcconfig" | while read f; do
-            sed -i '' \
-              's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*/IPHONEOS_DEPLOYMENT_TARGET = 13.0/g' \
-              "$f"
-          done
-          echo "IPHONEOS_DEPLOYMENT_TARGET = 13.0" \
-            >> ios/Flutter/AppFrameworkInfo.plist || true
+          python3 /tmp/patch_podfile.py ios/Podfile 13.0 "platform :ios"
+          find ios -name "project.pbxproj" -exec \
+            sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*/IPHONEOS_DEPLOYMENT_TARGET = 13.0/g' {} \;
+          find ios -name "*.xcconfig" -exec \
+            sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*/IPHONEOS_DEPLOYMENT_TARGET = 13.0/g' {} \;
 
       - name: Build iOS release (no codesign)
         env:
