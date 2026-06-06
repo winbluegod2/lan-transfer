@@ -41,9 +41,6 @@ VersionInfoDescription={#AppName} Installer
 VersionInfoProductName={#AppName}
 
 [Languages]
-; 简体中文
-Name: "chinesesimp"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
-; 英文备用
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
