@@ -55,8 +55,6 @@ jobs:
   build-android:
     name: Android APK
     runs-on: ubuntu-latest
-    env:
-      HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -80,32 +78,14 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Setup Android signing
-        if: env.HAS_KEYSTORE == 'true'
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
-          cat > android/key.properties << EOF
-          storePassword=${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          storeFile=keystore.jks
-          EOF
-
-      - name: Build APK (release, signed)
-        if: env.HAS_KEYSTORE == 'true'
-        run: flutter build apk --release
-
-      - name: Build APK (debug, no signing configured)
-        if: env.HAS_KEYSTORE != 'true'
+      - name: Build APK
         run: flutter build apk --debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 30
 
 # ══════════════════════════════════════════════════════════════════════════════
