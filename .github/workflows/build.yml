@@ -55,6 +55,8 @@ jobs:
   build-android:
     name: Android APK
     runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -79,7 +81,7 @@ jobs:
         run: flutter pub get
 
       - name: Setup Android signing
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: env.HAS_KEYSTORE == 'true'
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
           cat > android/key.properties << EOF
@@ -90,11 +92,11 @@ jobs:
           EOF
 
       - name: Build APK (release, signed)
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: env.HAS_KEYSTORE == 'true'
         run: flutter build apk --release
 
-      - name: Build APK (debug, no signing)
-        if: ${{ secrets.KEYSTORE_BASE64 == '' }}
+      - name: Build APK (debug, no signing configured)
+        if: env.HAS_KEYSTORE != 'true'
         run: flutter build apk --debug
 
       - name: Upload APK
