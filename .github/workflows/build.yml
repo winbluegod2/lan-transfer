@@ -1,16 +1,10 @@
 name: Build All Platforms
 
-# 触发条件：推送 v* 标签（如 v1.0.0）或手动触发
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: '版本号 (如 1.0.0)'
-        required: true
-        default: '1.0.0'
 
 env:
   FLUTTER_VERSION: '3.24.5'
@@ -32,6 +26,9 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+
+      - name: Generate platform files
+        run: flutter create . --project-name lan_transfer --org com.lantransfer --platforms windows
 
       - name: Install dependencies
         run: flutter pub get
@@ -75,11 +72,12 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Generate platform files
+        run: flutter create . --project-name lan_transfer --org com.lantransfer --platforms android
+
       - name: Install dependencies
         run: flutter pub get
 
-      # 解码 GitHub Secret 中的 keystore（base64 编码）
-      # 若未配置 Secret，则跳过签名，生成 debug APK
       - name: Setup Android signing
         if: ${{ secrets.KEYSTORE_BASE64 != '' }}
         run: |
@@ -91,7 +89,7 @@ jobs:
           storeFile=keystore.jks
           EOF
 
-      - name: Build APK (release)
+      - name: Build APK (release, signed)
         if: ${{ secrets.KEYSTORE_BASE64 != '' }}
         run: flutter build apk --release
 
@@ -125,6 +123,9 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Generate platform files
+        run: flutter create . --project-name lan_transfer --org com.lantransfer --platforms macos
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -136,12 +137,11 @@ jobs:
 
       - name: Create DMG
         run: |
-          APP_PATH="build/macos/Build/Products/Release/lan_transfer.app"
           DMG_PATH="LanTransfer.dmg"
+          APP_DIR="build/macos/Build/Products/Release/"
 
           create-dmg \
             --volname "LAN Transfer" \
-            --volicon "$APP_PATH/Contents/Resources/AppIcon.icns" \
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
@@ -150,15 +150,10 @@ jobs:
             --app-drop-link 430 185 \
             --no-internet-enable \
             "$DMG_PATH" \
-            "build/macos/Build/Products/Release/" \
-          || true
-
-          # 如果 create-dmg 失败则用 hdiutil 简单打包
-          if [ ! -f "$DMG_PATH" ]; then
-            hdiutil create -volname "LAN Transfer" \
-              -srcfolder "build/macos/Build/Products/Release/" \
-              -ov -format UDZO "$DMG_PATH"
-          fi
+            "$APP_DIR" \
+          || hdiutil create -volname "LAN Transfer" \
+               -srcfolder "$APP_DIR" \
+               -ov -format UDZO "$DMG_PATH"
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
@@ -183,6 +178,9 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+
+      - name: Generate platform files
+        run: flutter create . --project-name lan_transfer --org com.lantransfer --platforms ios
 
       - name: Install dependencies
         run: flutter pub get
@@ -229,7 +227,7 @@ jobs:
             | 平台 | 文件 | 说明 |
             |---|---|---|
             | Windows | `LanTransferSetup.exe` | 双击安装 |
-            | Android | `app-release.apk` | 开启"未知来源"后安装 |
+            | Android | `app-release.apk` 或 `app-debug.apk` | 开启"未知来源"后安装 |
             | macOS | `LanTransfer.dmg` | 拖入 Applications |
             | iOS | `LanTransfer.ipa` | 用 AltStore / Sideloadly 安装 |
 
