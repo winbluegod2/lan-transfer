@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:open_filex/open_filex.dart';
+import 'package:open_file/open_file.dart';
 import 'package:provider/provider.dart';
 import '../core/models/received_item.dart';
 import '../core/utils/network_utils.dart';
@@ -214,7 +214,7 @@ class _ReceivedItemCard extends StatelessWidget {
       );
       return;
     }
-    OpenFilex.open(path);
+    OpenFile.open(path);
   }
 
   void _showFilePath(BuildContext context, String path) {
