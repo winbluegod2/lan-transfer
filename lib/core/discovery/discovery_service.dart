@@ -1,0 +1,84 @@
+import 'package:bonsoir/bonsoir.dart';
+import '../models/device_info.dart';
+
+/// mDNS 服务：广播自己 + 发现局域网内其他设备
+class DiscoveryService {
+  static const _serviceType = '_lantransfer._tcp';
+
+  BonsoirBroadcast? _broadcast;
+  BonsoirDiscovery? _discovery;
+
+  final void Function(DeviceInfo device) onDeviceFound;
+  final void Function(String deviceId) onDeviceLost;
+
+  DiscoveryService({
+    required this.onDeviceFound,
+    required this.onDeviceLost,
+  });
+
+  /// 广播本机信息
+  Future<void> startBroadcast(DeviceInfo me) async {
+    _broadcast = BonsoirBroadcast(
+      service: BonsoirService(
+        name: me.name,
+        type: _serviceType,
+        port: me.port,
+        attributes: {
+          'id': me.id,
+          'os': me.os,
+          'ip': me.ip,
+        },
+      ),
+    );
+    await _broadcast!.ready;
+    await _broadcast!.start();
+  }
+
+  /// 开始发现局域网内其他设备
+  Future<void> startDiscovery() async {
+    _discovery = BonsoirDiscovery(type: _serviceType);
+    await _discovery!.ready;
+
+    _discovery!.eventStream!.listen((event) {
+      if (event.type == BonsoirDiscoveryEventType.discoveryServiceFound) {
+        event.service?.resolve(_discovery!.serviceResolver);
+      } else if (event.type ==
+          BonsoirDiscoveryEventType.discoveryServiceResolved) {
+        final service = event.service as ResolvedBonsoirService?;
+        if (service == null) return;
+
+        final attrs = service.attributes;
+        final id = attrs?['id'];
+        final os = attrs?['os'] ?? 'unknown';
+
+        // 优先用 mDNS 解析到的 host（IPv4）
+        String? ip = service.host;
+        if (ip != null && ip.endsWith('.')) ip = ip.substring(0, ip.length - 1);
+        ip ??= attrs?['ip'] ?? '';
+
+        if (id == null || ip.isEmpty) return;
+
+        onDeviceFound(DeviceInfo(
+          id: id,
+          name: service.name,
+          ip: ip,
+          port: service.port,
+          os: os,
+        ));
+      } else if (event.type == BonsoirDiscoveryEventType.discoveryServiceLost) {
+        final service = event.service;
+        final id = service?.attributes?['id'];
+        if (id != null) onDeviceLost(id);
+      }
+    });
+
+    await _discovery!.start();
+  }
+
+  Future<void> stop() async {
+    await _broadcast?.stop();
+    await _discovery?.stop();
+    _broadcast = null;
+    _discovery = null;
+  }
+}

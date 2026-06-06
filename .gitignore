@@ -1,0 +1,31 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Android 签名（绝对不能提交！）
+android/key.properties
+android/app/keystore.jks
+android/app/*.jks
+android/app/*.keystore
+
+# iOS
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+
+# macOS
+macos/Flutter/ephemeral/
+macos/Pods/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

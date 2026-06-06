@@ -1,0 +1,65 @@
+name: lan_transfer
+description: LAN file and text transfer tool - cross platform
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP 服务端
+  shelf: ^1.4.1
+  shelf_router: ^1.1.4
+
+  # HTTP 客户端（含进度条）
+  dio: ^5.4.3+1
+
+  # 二维码生成
+  qr_flutter: ^4.1.0
+
+  # 二维码扫描（iOS/Android）
+  mobile_scanner: ^5.2.3
+
+  # 文件选择
+  file_picker: ^8.1.2
+
+  # 文件保存路径
+  path_provider: ^2.1.3
+
+  # 打开接收到的文件
+  open_filex: ^1.3.2
+
+  # 获取本机 IP
+  network_info_plus: ^6.0.1
+
+  # mDNS 局域网设备自动发现（全平台）
+  bonsoir: ^5.1.1
+
+  # 设备信息（名称、系统）
+  device_info_plus: ^10.1.2
+
+  # 状态管理
+  provider: ^6.1.2
+
+  # 唯一 ID
+  uuid: ^4.4.2
+
+  # 文件大小格式化等
+  intl: ^0.19.0
+
+  # 剪贴板
+  flutter_clipboard_manager: ^0.0.2
+
+  # 图标
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.2
+
+flutter:
+  uses-material-design: true

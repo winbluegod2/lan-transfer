@@ -1,0 +1,243 @@
+name: Build All Platforms
+
+# 触发条件：推送 v* 标签（如 v1.0.0）或手动触发
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (如 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+env:
+  FLUTTER_VERSION: '3.24.5'
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Windows → LanTransferSetup.exe
+# ══════════════════════════════════════════════════════════════════════════════
+jobs:
+  build-windows:
+    name: Windows EXE Installer
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Build installer
+        run: iscc installer\windows_installer.iss
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: installer/output/LanTransferSetup.exe
+          retention-days: 30
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Android → app-release.apk
+# ══════════════════════════════════════════════════════════════════════════════
+  build-android:
+    name: Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 解码 GitHub Secret 中的 keystore（base64 编码）
+      # 若未配置 Secret，则跳过签名，生成 debug APK
+      - name: Setup Android signing
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
+          cat > android/key.properties << EOF
+          storePassword=${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=keystore.jks
+          EOF
+
+      - name: Build APK (release)
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        run: flutter build apk --release
+
+      - name: Build APK (debug, no signing)
+        if: ${{ secrets.KEYSTORE_BASE64 == '' }}
+        run: flutter build apk --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 30
+
+# ══════════════════════════════════════════════════════════════════════════════
+# macOS → LanTransfer.dmg
+# ══════════════════════════════════════════════════════════════════════════════
+  build-macos:
+    name: macOS DMG
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build macOS release
+        run: flutter build macos --release
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Create DMG
+        run: |
+          APP_PATH="build/macos/Build/Products/Release/lan_transfer.app"
+          DMG_PATH="LanTransfer.dmg"
+
+          create-dmg \
+            --volname "LAN Transfer" \
+            --volicon "$APP_PATH/Contents/Resources/AppIcon.icns" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "lan_transfer.app" 160 185 \
+            --hide-extension "lan_transfer.app" \
+            --app-drop-link 430 185 \
+            --no-internet-enable \
+            "$DMG_PATH" \
+            "build/macos/Build/Products/Release/" \
+          || true
+
+          # 如果 create-dmg 失败则用 hdiutil 简单打包
+          if [ ! -f "$DMG_PATH" ]; then
+            hdiutil create -volname "LAN Transfer" \
+              -srcfolder "build/macos/Build/Products/Release/" \
+              -ov -format UDZO "$DMG_PATH"
+          fi
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: LanTransfer.dmg
+          retention-days: 30
+
+# ══════════════════════════════════════════════════════════════════════════════
+# iOS → LanTransfer.ipa（免签名，可用 AltStore / Sideloadly 安装）
+# ══════════════════════════════════════════════════════════════════════════════
+  build-ios:
+    name: iOS IPA
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS release (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -r LanTransfer.ipa Payload/
+          rm -rf Payload/
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: LanTransfer.ipa
+          retention-days: 30
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 汇总：创建 GitHub Release（仅推 tag 时）
+# ══════════════════════════════════════════════════════════════════════════════
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-android, build-macos, build-ios]
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "LAN Transfer ${{ github.ref_name }}"
+          body: |
+            ## 下载安装
+
+            | 平台 | 文件 | 说明 |
+            |---|---|---|
+            | Windows | `LanTransferSetup.exe` | 双击安装 |
+            | Android | `app-release.apk` | 开启"未知来源"后安装 |
+            | macOS | `LanTransfer.dmg` | 拖入 Applications |
+            | iOS | `LanTransfer.ipa` | 用 AltStore / Sideloadly 安装 |
+
+            > iOS 说明：此 IPA 为未签名版，需通过 [AltStore](https://altstore.io) 或 [Sideloadly](https://sideloadly.io) 安装。
+          files: |
+            artifacts/windows-installer/LanTransferSetup.exe
+            artifacts/android-apk/*.apk
+            artifacts/macos-dmg/LanTransfer.dmg
+            artifacts/ios-ipa/LanTransfer.ipa
+          draft: false
+          prerelease: false
