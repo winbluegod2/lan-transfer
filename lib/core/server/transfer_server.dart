@@ -101,7 +101,7 @@ class TransferServer {
 
   DeviceInfo _parseSender(Map<String, String> headers) => DeviceInfo(
         id: headers['x-sender-id'] ?? '',
-        name: headers['x-sender-name'] ?? 'Unknown',
+        name: Uri.decodeComponent(headers['x-sender-name'] ?? 'Unknown'),
         ip: headers['x-sender-ip'] ?? '',
         port: int.tryParse(headers['x-sender-port'] ?? '') ?? port,
         os: headers['x-sender-os'] ?? 'unknown',

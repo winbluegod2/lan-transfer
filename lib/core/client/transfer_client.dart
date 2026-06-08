@@ -19,7 +19,7 @@ class TransferClient {
 
   Map<String, String> _senderHeaders(DeviceInfo me) => {
         'x-sender-id': me.id,
-        'x-sender-name': me.name,
+        'x-sender-name': Uri.encodeComponent(me.name),
         'x-sender-ip': me.ip,
         'x-sender-port': me.port.toString(),
         'x-sender-os': me.os,
