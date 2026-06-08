@@ -67,7 +67,7 @@ class DiscoveryService {
           }
         }
 
-        if (id == null || ip.isEmpty) return;
+        if (id == null || ip == null || ip.isEmpty) return;
 
         onDeviceFound(DeviceInfo(
           id: id,
