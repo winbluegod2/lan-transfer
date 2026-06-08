@@ -59,6 +59,11 @@ dependencies:
   # 图标
   cupertino_icons: ^1.0.8
 
+dependency_overrides:
+  # package_info_plus 9.x uses flutter.compileSdkVersion in its build.gradle
+  # which is incompatible with Flutter 3.24.5 / AGP setup. Pin to 8.x.
+  package_info_plus: ^8.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
