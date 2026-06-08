@@ -396,9 +396,7 @@ class _DeviceCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final messages = provider.messagesFor(device.id);
     final lastMsg = messages.isNotEmpty ? messages.last : null;
-    final unread = messages
-        .where((m) => m.direction == MessageDirection.received)
-        .length;
+    final unread = provider.unreadFor(device.id);
 
     return Card(
       child: ListTile(

@@ -4,10 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:open_file/open_file.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 import '../core/models/chat_message.dart';
 import '../core/models/device_info.dart';
 import '../core/utils/network_utils.dart';
 import '../providers/app_provider.dart';
+import 'screenshot_screen.dart';
 
 class ConversationScreen extends StatefulWidget {
   final DeviceInfo target;
@@ -21,6 +23,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
   final _textCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mark messages as read when entering the conversation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AppProvider>().markAsRead(widget.target.id);
+    });
+  }
 
   @override
   void dispose() {
@@ -71,6 +82,41 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
+  // Centered toast for non-error short feedback (e.g. "已复制")
+  void _showToast(String msg) {
+    if (!mounted) return;
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) {
+        final sz = MediaQuery.of(context).size;
+        return Positioned(
+          top: sz.height / 2 - 24,
+          left: sz.width * 0.2,
+          width: sz.width * 0.6,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              alignment: Alignment.center,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(msg,
+                  style: const TextStyle(color: Colors.white),
+                  textAlign: TextAlign.center),
+            ),
+          ),
+        );
+      },
+    );
+    overlay.insert(entry);
+    Future.delayed(const Duration(milliseconds: 1500), entry.remove);
+  }
+
+  // Bottom snack for errors
   void _showSnack(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -88,6 +134,88 @@ class _ConversationScreenState extends State<ConversationScreen> {
       Process.run('explorer.exe', ['/select,$winPath']);
     } else if (Platform.isLinux) {
       Process.run('xdg-open', [dir]);
+    }
+  }
+
+  Future<void> _doScreenshot() async {
+    if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) return;
+
+    final tempPath =
+        '${Directory.systemTemp.path}${Platform.pathSeparator}lan_ss_${DateTime.now().millisecondsSinceEpoch}.png';
+
+    if (Platform.isMacOS) {
+      // Native interactive selection; no window management needed
+      final r = await Process.run('screencapture', ['-i', '-x', tempPath]);
+      if (r.exitCode != 0 || !File(tempPath).existsSync()) return;
+      if (!mounted) return;
+      setState(() => _sending = true);
+      final error = await context
+          .read<AppProvider>()
+          .sendFile(widget.target, File(tempPath));
+      setState(() => _sending = false);
+      if (error != null && mounted) {
+        _showSnack('发送失败：$error');
+      } else {
+        _scrollToBottom();
+      }
+      return;
+    }
+
+    // Windows / Linux: minimize → capture full screen → restore → crop UI
+    await windowManager.minimize();
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    try {
+      if (Platform.isWindows) {
+        final winPath = tempPath.replaceAll('/', '\\');
+        final psScript = [
+          'Add-Type -AssemblyName System.Windows.Forms',
+          'Add-Type -AssemblyName System.Drawing',
+          r'$b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds',
+          r'$bmp = New-Object System.Drawing.Bitmap($b.Width,$b.Height)',
+          r'$g = [System.Drawing.Graphics]::FromImage($bmp)',
+          r'$g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size)',
+          r'$g.Dispose()',
+          '\$bmp.Save("$winPath")',
+          r'$bmp.Dispose()',
+        ].join('; ');
+        final result = await Process.run(
+            'powershell', ['-NoProfile', '-Command', psScript]);
+        if (result.exitCode != 0 || !File(tempPath).existsSync()) return;
+      } else if (Platform.isLinux) {
+        ProcessResult result = await Process.run('scrot', [tempPath]);
+        if (result.exitCode != 0) {
+          result =
+              await Process.run('gnome-screenshot', ['-f', tempPath]);
+        }
+        if (result.exitCode != 0 || !File(tempPath).existsSync()) return;
+      }
+    } finally {
+      await windowManager.restore();
+      await windowManager.focus();
+    }
+
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (!mounted) return;
+
+    final croppedFile = await Navigator.push<File>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScreenshotCropScreen(imagePath: tempPath),
+        fullscreenDialog: true,
+      ),
+    );
+    if (croppedFile == null || !mounted) return;
+
+    setState(() => _sending = true);
+    final error = await context
+        .read<AppProvider>()
+        .sendFile(widget.target, croppedFile);
+    setState(() => _sending = false);
+    if (error != null && mounted) {
+      _showSnack('发送失败：$error');
+    } else {
+      _scrollToBottom();
     }
   }
 
@@ -141,6 +269,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
           );
         }
         WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          context.read<AppProvider>().markAsRead(widget.target.id);
           if (_scrollCtrl.hasClients &&
               _scrollCtrl.position.pixels >=
                   _scrollCtrl.position.maxScrollExtent - 80) {
@@ -160,7 +290,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
               onTap: () {
                 if (msg.type == MessageType.text) {
                   Clipboard.setData(ClipboardData(text: msg.content));
-                  _showSnack('已复制');
+                  _showToast('已复制');
                 } else {
                   OpenFile.open(msg.content);
                 }
@@ -191,6 +321,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
       ),
       child: Row(
         children: [
+          if (Platform.isWindows || Platform.isMacOS || Platform.isLinux)
+            IconButton(
+              onPressed: _sending ? null : _doScreenshot,
+              icon: const Icon(Icons.crop_free),
+              tooltip: '截图',
+            ),
           IconButton(
             onPressed: _sending ? null : _sendFile,
             icon: const Icon(Icons.attach_file),

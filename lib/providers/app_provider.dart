@@ -46,6 +46,9 @@ class AppProvider extends ChangeNotifier {
   String? _avatarPath;
   bool _wakelockEnabled = false;
 
+  // per-peer last-read timestamp (millisecondsSinceEpoch)
+  final Map<String, int> _lastReadMs = {};
+
   final _server = TransferServer();
   final _client = TransferClient();
   final _store = MessageStore();
@@ -74,10 +77,32 @@ class AppProvider extends ChangeNotifier {
     return seen.values.toList();
   }
 
-  int unreadFor(String peerId) =>
-      _messages
-          .where((m) => m.peerId == peerId && m.direction == MessageDirection.received)
-          .length;
+  int unreadFor(String peerId) {
+    final since = _lastReadMs[peerId] ?? 0;
+    return _messages
+        .where((m) =>
+            m.peerId == peerId &&
+            m.direction == MessageDirection.received &&
+            m.timestamp.millisecondsSinceEpoch > since)
+        .length;
+  }
+
+  void markAsRead(String peerId) {
+    final since = _lastReadMs[peerId] ?? 0;
+    final hasUnread = _messages.any((m) =>
+        m.peerId == peerId &&
+        m.direction == MessageDirection.received &&
+        m.timestamp.millisecondsSinceEpoch > since);
+    if (!hasUnread) return;
+    _lastReadMs[peerId] = DateTime.now().millisecondsSinceEpoch;
+    _persistLastRead(peerId);
+    notifyListeners();
+  }
+
+  void _persistLastRead(String peerId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('last_read_$peerId', _lastReadMs[peerId]!);
+  }
 
   // ── Init ──────────────────────────────────────────────────────────────────
   Future<void> init() async {
@@ -87,15 +112,20 @@ class AppProvider extends ChangeNotifier {
     _avatarPath = prefs.getString('avatar_path');
     _wakelockEnabled = prefs.getBool('wakelock_enabled') ?? false;
 
+    // Load message history first so we can restore per-peer read times
+    final saved = await _store.load();
+    _messages.addAll(saved);
+    for (final m in _messages) {
+      if (!_lastReadMs.containsKey(m.peerId)) {
+        _lastReadMs[m.peerId] = prefs.getInt('last_read_${m.peerId}') ?? 0;
+      }
+    }
+    notifyListeners();
+
     // Restore wakelock state
     if (_wakelockEnabled && (Platform.isAndroid || Platform.isIOS)) {
       WakelockPlus.toggle(enable: true);
     }
-
-    // Load message history
-    final saved = await _store.load();
-    _messages.addAll(saved);
-    notifyListeners();
 
     // Build device info
     final ip = await NetworkUtils.getLocalIp();

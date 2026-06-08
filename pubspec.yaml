@@ -56,6 +56,12 @@ dependencies:
   # 运行时权限请求（Android 局域网发现需要）
   permission_handler: ^11.3.0
 
+  # 桌面窗口管理（截图功能需要最小化/还原窗口）
+  window_manager: ^0.3.9
+
+  # 图片裁剪（截图区域裁剪）
+  image: ^4.1.0
+
   # 持久化设置和消息记录
   shared_preferences: ^2.2.3
 
