@@ -64,7 +64,7 @@ Name: "{userstartup}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: startu
 ; 添加防火墙入站规则（允许局域网接收）
 Filename: "netsh"; \
   Parameters: "advfirewall firewall add rule name=""LAN Transfer"" dir=in action=allow protocol=TCP localport=53317 enable=yes"; \
-  Flags: runhidden; RunOnceId: "AddFirewallRule"
+  Flags: runhidden
 
 ; 安装完成后启动程序
 Filename: "{app}\{#AppExeName}"; \
