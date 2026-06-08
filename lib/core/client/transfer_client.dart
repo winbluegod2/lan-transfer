@@ -61,7 +61,7 @@ class TransferClient {
       );
       return TransferResult(success: res.statusCode == 200);
     } on DioException catch (e) {
-      return TransferResult(success: false, error: e.message);
+      return TransferResult(success: false, error: '[${e.type.name}] ${e.message ?? e.error}');
     }
   }
 
@@ -96,7 +96,7 @@ class TransferClient {
       );
       return TransferResult(success: res.statusCode == 200);
     } on DioException catch (e) {
-      return TransferResult(success: false, error: e.message);
+      return TransferResult(success: false, error: '[${e.type.name}] ${e.message ?? e.error}');
     }
   }
 }

@@ -184,14 +184,14 @@ class _SendScreenState extends State<SendScreen>
     }
     setState(() => _sending = true);
     final provider = context.read<AppProvider>();
-    final ok = await provider.sendText(widget.target, text);
+    final error = await provider.sendText(widget.target, text);
     setState(() => _sending = false);
 
-    if (ok) {
+    if (error == null) {
       _textCtrl.clear();
       _showSnack('发送成功 ✓');
     } else {
-      _showSnack('发送失败 → ${widget.target.address}', isError: true);
+      _showSnack('${widget.target.address} $error', isError: true);
     }
   }
 
@@ -210,13 +210,13 @@ class _SendScreenState extends State<SendScreen>
 
     setState(() => _sending = true);
     final provider = context.read<AppProvider>();
-    final ok = await provider.sendFile(widget.target, File(path));
+    final error = await provider.sendFile(widget.target, File(path));
     setState(() => _sending = false);
 
-    if (ok) {
+    if (error == null) {
       _showSnack('文件发送成功 ✓');
     } else {
-      _showSnack('发送失败 → ${widget.target.address}', isError: true);
+      _showSnack('${widget.target.address} $error', isError: true);
     }
   }
 

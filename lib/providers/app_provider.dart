@@ -127,19 +127,21 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ── 发送文本 ──────────────────────────────────────────────────────────────
-  Future<bool> sendText(DeviceInfo target, String text) async {
-    if (_myDevice == null) return false;
+  /// 成功返回 null，失败返回错误描述
+  Future<String?> sendText(DeviceInfo target, String text) async {
+    if (_myDevice == null) return 'not initialized';
     final result = await _client.sendText(
       target: target,
       me: _myDevice!,
       text: text,
     );
-    return result.success;
+    return result.success ? null : result.error;
   }
 
   // ── 发送文件 ──────────────────────────────────────────────────────────────
-  Future<bool> sendFile(DeviceInfo target, File file) async {
-    if (_myDevice == null) return false;
+  /// 成功返回 null，失败返回错误描述
+  Future<String?> sendFile(DeviceInfo target, File file) async {
+    if (_myDevice == null) return 'not initialized';
     final taskId = const Uuid().v4();
     final fileName = file.path.split(Platform.pathSeparator).last;
 
@@ -171,7 +173,7 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
     });
 
-    return result.success;
+    return result.success ? null : result.error;
   }
 
   void clearReceived() {
