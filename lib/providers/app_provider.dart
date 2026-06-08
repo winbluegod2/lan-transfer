@@ -40,6 +40,7 @@ class AppProvider extends ChangeNotifier {
   final List<ChatMessage> _messages = [];
   final List<SendTask> _sendTasks = [];
   bool _serverRunning = false;
+  String? _serverError;
 
   // profile
   String? _customName;
@@ -61,6 +62,7 @@ class AppProvider extends ChangeNotifier {
   List<SendTask> get activeSendTasks =>
       _sendTasks.where((t) => !t.isDone).toList();
   bool get serverRunning => _serverRunning;
+  String? get serverError => _serverError;
   String? get avatarPath => _avatarPath;
   bool get wakelockEnabled => _wakelockEnabled;
 
@@ -160,28 +162,48 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> _startServer() async {
     if (_myDevice == null) return;
-    await _server.start(
-      myDevice: _myDevice!,
-      onReceived: (item) {
-        final msg = ChatMessage(
-          id: item.id,
-          peerId: item.sender.id,
-          peerName: item.sender.name,
-          peerOs: item.sender.os,
-          direction: MessageDirection.received,
-          type: item.type == ItemType.text ? MessageType.text : MessageType.file,
-          content: item.content,
-          fileName: item.fileName,
-          fileSize: item.fileSize,
-          timestamp: item.receivedAt,
-        );
-        _messages.add(msg);
-        _store.save(List.from(_messages));
-        notifyListeners();
-      },
-    );
-    _serverRunning = true;
+    try {
+      await _server.start(
+        myDevice: _myDevice!,
+        onReceived: (item) {
+          final msg = ChatMessage(
+            id: item.id,
+            peerId: item.sender.id,
+            peerName: item.sender.name,
+            peerOs: item.sender.os,
+            direction: MessageDirection.received,
+            type: item.type == ItemType.text ? MessageType.text : MessageType.file,
+            content: item.content,
+            fileName: item.fileName,
+            fileSize: item.fileSize,
+            timestamp: item.receivedAt,
+          );
+          _messages.add(msg);
+          _store.save(List.from(_messages));
+          notifyListeners();
+        },
+      );
+      _serverRunning = true;
+      _serverError = null;
+    } catch (e) {
+      _serverRunning = false;
+      _serverError = e.toString();
+      debugPrint('LanTransfer server start failed: $e');
+    }
     notifyListeners();
+  }
+
+  /// Retry starting the server (call from UI when server shows as not running)
+  Future<void> retryServer() async {
+    _serverError = null;
+    notifyListeners();
+    await _server.stop();
+    await _startServer();
+    if (_serverRunning) {
+      _discovery?.stop();
+      _discovery = null;
+      await _startDiscovery();
+    }
   }
 
   Future<void> _startDiscovery() async {

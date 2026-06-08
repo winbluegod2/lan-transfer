@@ -85,39 +85,47 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       // 服务状态
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: provider.serverRunning
-                              ? Colors.green.shade50
-                              : Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: provider.serverRunning
-                                ? Colors.green.shade200
-                                : Colors.red.shade200,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.circle,
-                                size: 8,
+                      Tooltip(
+                        message: provider.serverError ?? '',
+                        child: GestureDetector(
+                          onTap: provider.serverRunning
+                              ? null
+                              : () => context.read<AppProvider>().retryServer(),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: provider.serverRunning
+                                  ? Colors.green.shade50
+                                  : Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
                                 color: provider.serverRunning
-                                    ? Colors.green
-                                    : Colors.red),
-                            const SizedBox(width: 4),
-                            Text(
-                              provider.serverRunning ? '运行中' : '未启动',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: provider.serverRunning
-                                    ? Colors.green.shade700
-                                    : Colors.red.shade700,
+                                    ? Colors.green.shade200
+                                    : Colors.red.shade200,
                               ),
                             ),
-                          ],
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.circle,
+                                    size: 8,
+                                    color: provider.serverRunning
+                                        ? Colors.green
+                                        : Colors.red),
+                                const SizedBox(width: 4),
+                                Text(
+                                  provider.serverRunning ? '运行中' : '未启动（点击重试）',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: provider.serverRunning
+                                        ? Colors.green.shade700
+                                        : Colors.red.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                       // 设置
