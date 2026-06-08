@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../core/models/chat_message.dart';
 import '../core/models/device_info.dart';
 import '../core/models/received_item.dart';
@@ -42,6 +44,7 @@ class AppProvider extends ChangeNotifier {
   // profile
   String? _customName;
   String? _avatarPath;
+  bool _wakelockEnabled = false;
 
   final _server = TransferServer();
   final _client = TransferClient();
@@ -56,6 +59,7 @@ class AppProvider extends ChangeNotifier {
       _sendTasks.where((t) => !t.isDone).toList();
   bool get serverRunning => _serverRunning;
   String? get avatarPath => _avatarPath;
+  bool get wakelockEnabled => _wakelockEnabled;
 
   List<ChatMessage> messagesFor(String peerId) =>
       _messages.where((m) => m.peerId == peerId).toList()
@@ -81,6 +85,12 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _customName = prefs.getString('profile_name');
     _avatarPath = prefs.getString('avatar_path');
+    _wakelockEnabled = prefs.getBool('wakelock_enabled') ?? false;
+
+    // Restore wakelock state
+    if (_wakelockEnabled && (Platform.isAndroid || Platform.isIOS)) {
+      WakelockPlus.toggle(enable: true);
+    }
 
     // Load message history
     final saved = await _store.load();
@@ -105,6 +115,14 @@ class AppProvider extends ChangeNotifier {
       os: os,
     );
     notifyListeners();
+
+    // Request runtime permissions on Android (needed for mDNS discovery)
+    if (Platform.isAndroid) {
+      await [
+        Permission.nearbyWifiDevices,
+        Permission.locationWhenInUse,
+      ].request();
+    }
 
     await _startServer();
     await _startDiscovery();
@@ -179,6 +197,15 @@ class AppProvider extends ChangeNotifier {
         os: _myDevice!.os,
       );
     }
+    notifyListeners();
+  }
+
+  // ── Wakelock ──────────────────────────────────────────────────────────────
+  Future<void> toggleWakelock() async {
+    _wakelockEnabled = !_wakelockEnabled;
+    await WakelockPlus.toggle(enable: _wakelockEnabled);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('wakelock_enabled', _wakelockEnabled);
     notifyListeners();
   }
 

@@ -53,6 +53,9 @@ dependencies:
   # 屏幕常亮（Android / iOS）
   wakelock_plus: ^1.1.4
 
+  # 运行时权限请求（Android 局域网发现需要）
+  permission_handler: ^11.3.0
+
   # 持久化设置和消息记录
   shared_preferences: ^2.2.3
 

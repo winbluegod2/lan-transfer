@@ -134,7 +134,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (Platform.isMacOS) {
       Process.run('open', ['-R', filePath]);
     } else if (Platform.isWindows) {
-      Process.run('explorer.exe', ['/select,', filePath]);
+      // /select, and path must be one argument; use native backslashes
+      final winPath = filePath.replaceAll('/', '\\');
+      Process.run('explorer.exe', ['/select,$winPath']);
     } else if (Platform.isLinux) {
       Process.run('xdg-open', [dir]);
     }
@@ -202,6 +204,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
           itemCount: messages.length,
           itemBuilder: (_, i) => _MessageBubble(
             message: messages[i],
+            onTap: messages[i].type == MessageType.file
+                ? () => OpenFile.open(messages[i].content)
+                : null,
             onLongPress: () => _onMessageLongPress(context, messages[i]),
           ),
         );
@@ -272,9 +277,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
+  final VoidCallback? onTap;
   final VoidCallback onLongPress;
 
-  const _MessageBubble({required this.message, required this.onLongPress});
+  const _MessageBubble({required this.message, this.onTap, required this.onLongPress});
 
   @override
   Widget build(BuildContext context) {
@@ -284,6 +290,7 @@ class _MessageBubble extends StatelessWidget {
     return Align(
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
       child: GestureDetector(
+        onTap: onTap,
         onLongPress: onLongPress,
         child: Container(
           constraints: BoxConstraints(
@@ -306,7 +313,7 @@ class _MessageBubble extends StatelessWidget {
               if (message.type == MessageType.file)
                 _FileBubbleContent(message: message, isSent: isSent)
               else
-                SelectableText(
+                Text(
                   message.content,
                   style: TextStyle(
                     color: isSent ? cs.onPrimaryContainer : cs.onSurface,

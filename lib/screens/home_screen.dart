@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 import '../core/models/chat_message.dart';
 import '../core/models/device_info.dart';
 import '../core/utils/network_utils.dart';
@@ -20,14 +19,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool _wakelockOn = false;
-
-  Future<void> _toggleWakelock() async {
-    final next = !_wakelockOn;
-    await WakelockPlus.toggle(enable: next);
-    setState(() => _wakelockOn = next);
-  }
-
   void _openConversation(DeviceInfo device) {
     Navigator.push(
       context,
@@ -80,15 +71,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       // 屏幕常亮（仅移动端）
                       if (Platform.isAndroid || Platform.isIOS)
                         Tooltip(
-                          message: _wakelockOn ? '关闭屏幕常亮' : '开启屏幕常亮',
+                          message: provider.wakelockEnabled ? '关闭屏幕常亮' : '开启屏幕常亮',
                           child: IconButton(
-                            onPressed: _toggleWakelock,
+                            onPressed: () => context.read<AppProvider>().toggleWakelock(),
                             icon: Icon(
-                              _wakelockOn
+                              provider.wakelockEnabled
                                   ? Icons.brightness_high
                                   : Icons.brightness_low,
                               size: 20,
-                              color: _wakelockOn ? Colors.amber : null,
+                              color: provider.wakelockEnabled ? Colors.amber : null,
                             ),
                             visualDensity: VisualDensity.compact,
                           ),
