@@ -78,57 +78,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  void _onMessageLongPress(BuildContext context, ChatMessage msg) {
-    final isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (msg.type == MessageType.text)
-              ListTile(
-                leading: const Icon(Icons.copy),
-                title: const Text('复制文本'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Clipboard.setData(ClipboardData(text: msg.content));
-                  _showSnack('已复制');
-                },
-              ),
-            if (msg.type == MessageType.file) ...[
-              ListTile(
-                leading: const Icon(Icons.open_in_new),
-                title: const Text('打开文件'),
-                onTap: () {
-                  Navigator.pop(context);
-                  OpenFile.open(msg.content);
-                },
-              ),
-              if (isDesktop)
-                ListTile(
-                  leading: const Icon(Icons.folder_open),
-                  title: const Text('打开所在目录'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _openFolder(msg.content);
-                  },
-                ),
-            ],
-            ListTile(
-              leading: Icon(Icons.delete_outline, color: Colors.red.shade400),
-              title: Text('删除', style: TextStyle(color: Colors.red.shade400)),
-              onTap: () {
-                Navigator.pop(context);
-                context.read<AppProvider>().deleteMessage(msg.id);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _openFolder(String filePath) {
     final dir = File(filePath).parent.path;
     if (Platform.isMacOS) {
@@ -202,13 +151,27 @@ class _ConversationScreenState extends State<ConversationScreen> {
           controller: _scrollCtrl,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           itemCount: messages.length,
-          itemBuilder: (_, i) => _MessageBubble(
-            message: messages[i],
-            onTap: messages[i].type == MessageType.file
-                ? () => OpenFile.open(messages[i].content)
-                : null,
-            onLongPress: () => _onMessageLongPress(context, messages[i]),
-          ),
+          itemBuilder: (_, i) {
+            final msg = messages[i];
+            final isDesktop =
+                Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+            return _MessageBubble(
+              message: msg,
+              onTap: () {
+                if (msg.type == MessageType.text) {
+                  Clipboard.setData(ClipboardData(text: msg.content));
+                  _showSnack('已复制');
+                } else {
+                  OpenFile.open(msg.content);
+                }
+              },
+              onLongPress: () =>
+                  context.read<AppProvider>().deleteMessage(msg.id),
+              onFolderTap: (msg.type == MessageType.file && isDesktop)
+                  ? () => _openFolder(msg.content)
+                  : null,
+            );
+          },
         );
       },
     );
@@ -275,60 +238,108 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
 // ── Message bubble ────────────────────────────────────────────────────────────
 
-class _MessageBubble extends StatelessWidget {
+class _MessageBubble extends StatefulWidget {
   final ChatMessage message;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final VoidCallback? onFolderTap;
 
-  const _MessageBubble({required this.message, this.onTap, required this.onLongPress});
+  const _MessageBubble({
+    required this.message,
+    required this.onTap,
+    required this.onLongPress,
+    this.onFolderTap,
+  });
+
+  @override
+  State<_MessageBubble> createState() => _MessageBubbleState();
+}
+
+class _MessageBubbleState extends State<_MessageBubble> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final isSent = message.direction == MessageDirection.sent;
+    final isSent = widget.message.direction == MessageDirection.sent;
+    final isFile = widget.message.type == MessageType.file;
     final cs = Theme.of(context).colorScheme;
+    final showFolder = isFile && _hovered && widget.onFolderTap != null;
 
     return Align(
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: Container(
-          constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75),
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: isSent ? cs.primaryContainer : cs.surfaceContainerHigh,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(16),
-              topRight: const Radius.circular(16),
-              bottomLeft: Radius.circular(isSent ? 16 : 4),
-              bottomRight: Radius.circular(isSent ? 4 : 16),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
+          child: Container(
+            constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.75),
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+              color: isSent ? cs.primaryContainer : cs.surfaceContainerHigh,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: Radius.circular(isSent ? 16 : 4),
+                bottomRight: Radius.circular(isSent ? 4 : 16),
+              ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (message.type == MessageType.file)
-                _FileBubbleContent(message: message, isSent: isSent)
-              else
-                Text(
-                  message.content,
-                  style: TextStyle(
-                    color: isSent ? cs.onPrimaryContainer : cs.onSurface,
+            child: Stack(
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isFile)
+                        _FileBubbleContent(
+                            message: widget.message, isSent: isSent)
+                      else
+                        Text(
+                          widget.message.content,
+                          style: TextStyle(
+                            color:
+                                isSent ? cs.onPrimaryContainer : cs.onSurface,
+                          ),
+                        ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatTime(widget.message.timestamp),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: (isSent
+                                  ? cs.onPrimaryContainer
+                                  : cs.onSurface)
+                              .withOpacity(0.5),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              const SizedBox(height: 2),
-              Text(
-                _formatTime(message.timestamp),
-                style: TextStyle(
-                  fontSize: 10,
-                  color: (isSent ? cs.onPrimaryContainer : cs.onSurface)
-                      .withOpacity(0.5),
-                ),
-              ),
-            ],
+                // Folder icon — appears on hover for file messages on desktop
+                if (showFolder)
+                  Positioned(
+                    right: 6,
+                    bottom: 6,
+                    child: GestureDetector(
+                      onTap: widget.onFolderTap,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.black45,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(Icons.folder_open,
+                            size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
