@@ -77,7 +77,7 @@ jobs:
           cache: true
 
       - name: Generate platform files
-        run: flutter create . --project-name lan_transfer --org com.lantransfer --platforms android
+        run: flutter create . --project-name lan_transfer --org com.example --platforms android
 
       - name: Install dependencies
         run: flutter pub get
