@@ -1,4 +1,5 @@
 import 'package:bonsoir/bonsoir.dart';
+import 'package:flutter/foundation.dart';
 import '../models/device_info.dart';
 
 /// mDNS 服务：广播自己 + 发现局域网内其他设备
@@ -18,24 +19,30 @@ class DiscoveryService {
 
   /// 广播本机信息
   Future<void> startBroadcast(DeviceInfo me) async {
-    _broadcast = BonsoirBroadcast(
-      service: BonsoirService(
-        name: me.name,
-        type: _serviceType,
-        port: me.port,
-        attributes: {
-          'id': me.id,
-          'os': me.os,
-          'ip': me.ip,
-        },
-      ),
-    );
-    await _broadcast!.ready;
-    await _broadcast!.start();
+    try {
+      _broadcast = BonsoirBroadcast(
+        service: BonsoirService(
+          name: me.name,
+          type: _serviceType,
+          port: me.port,
+          attributes: {
+            'id': me.id,
+            'os': me.os,
+            'ip': me.ip,
+          },
+        ),
+      );
+      await _broadcast!.ready;
+      await _broadcast!.start();
+    } catch (e) {
+      debugPrint('LanTransfer broadcast error: $e');
+      _broadcast = null;
+    }
   }
 
   /// 开始发现局域网内其他设备
   Future<void> startDiscovery() async {
+    try {
     _discovery = BonsoirDiscovery(type: _serviceType);
     await _discovery!.ready;
 
@@ -70,9 +77,15 @@ class DiscoveryService {
         final id = service?.attributes?['id'];
         if (id != null) onDeviceLost(id);
       }
+    }, onError: (e) {
+      debugPrint('LanTransfer discovery error: $e');
     });
 
-    await _discovery!.start();
+      await _discovery!.start();
+    } catch (e) {
+      debugPrint('LanTransfer discovery error: $e');
+      _discovery = null;
+    }
   }
 
   Future<void> stop() async {

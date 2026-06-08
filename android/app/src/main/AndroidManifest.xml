@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- 网络 -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -7,6 +8,12 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <!-- mDNS 多播（局域网自动发现） -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+    <!-- Android 12+ WiFi 近距离设备发现（mDNS/NSD 需要） -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="33"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="32"/>
 
     <!-- 相机（二维码扫描） -->
     <uses-permission android:name="android.permission.CAMERA"/>
