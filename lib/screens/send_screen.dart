@@ -191,7 +191,7 @@ class _SendScreenState extends State<SendScreen>
       _textCtrl.clear();
       _showSnack('发送成功 ✓');
     } else {
-      _showSnack('发送失败，对方可能已离线', isError: true);
+      _showSnack('发送失败 → ${widget.target.address}', isError: true);
     }
   }
 
@@ -216,7 +216,7 @@ class _SendScreenState extends State<SendScreen>
     if (ok) {
       _showSnack('文件发送成功 ✓');
     } else {
-      _showSnack('发送失败，对方可能已离线', isError: true);
+      _showSnack('发送失败 → ${widget.target.address}', isError: true);
     }
   }
 

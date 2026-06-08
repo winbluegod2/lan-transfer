@@ -118,15 +118,22 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Add network entitlements to macOS release build
+      - name: Write macOS Release.entitlements (disable sandbox, enable networking)
         run: |
-          ENTITLEMENTS="macos/Runner/Release.entitlements"
-          /usr/libexec/PlistBuddy -c "Add :com.apple.security.network.client bool true" "$ENTITLEMENTS" 2>/dev/null || \
-            /usr/libexec/PlistBuddy -c "Set :com.apple.security.network.client true" "$ENTITLEMENTS"
-          /usr/libexec/PlistBuddy -c "Add :com.apple.security.network.server bool true" "$ENTITLEMENTS" 2>/dev/null || \
-            /usr/libexec/PlistBuddy -c "Set :com.apple.security.network.server true" "$ENTITLEMENTS"
-          echo "Release.entitlements:"
-          cat "$ENTITLEMENTS"
+          cat > macos/Runner/Release.entitlements << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>com.apple.security.network.client</key>
+            <true/>
+            <key>com.apple.security.network.server</key>
+            <true/>
+          </dict>
+          </plist>
+          PLIST
+          echo "Release.entitlements written:"
+          cat macos/Runner/Release.entitlements
 
       - name: Set macOS deployment target to 10.15
         run: |
