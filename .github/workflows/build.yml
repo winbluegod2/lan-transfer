@@ -118,6 +118,16 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Add network entitlements to macOS release build
+        run: |
+          ENTITLEMENTS="macos/Runner/Release.entitlements"
+          /usr/libexec/PlistBuddy -c "Add :com.apple.security.network.client bool true" "$ENTITLEMENTS" 2>/dev/null || \
+            /usr/libexec/PlistBuddy -c "Set :com.apple.security.network.client true" "$ENTITLEMENTS"
+          /usr/libexec/PlistBuddy -c "Add :com.apple.security.network.server bool true" "$ENTITLEMENTS" 2>/dev/null || \
+            /usr/libexec/PlistBuddy -c "Set :com.apple.security.network.server true" "$ENTITLEMENTS"
+          echo "Release.entitlements:"
+          cat "$ENTITLEMENTS"
+
       - name: Set macOS deployment target to 10.15
         run: |
           # Podfile: 删掉所有 platform 行，在文件头插入正确版本

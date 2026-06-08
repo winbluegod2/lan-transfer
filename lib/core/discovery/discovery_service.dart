@@ -58,10 +58,14 @@ class DiscoveryService {
         final id = attrs?['id'];
         final os = attrs?['os'] ?? 'unknown';
 
-        // 优先用 mDNS 解析到的 host（IPv4）
-        String? ip = service.host;
-        if (ip != null && ip.endsWith('.')) ip = ip.substring(0, ip.length - 1);
-        ip ??= attrs?['ip'] ?? '';
+        // 优先用服务属性里的 IPv4，避免 macOS 将 host 解析为 IPv6
+        String? ip = attrs?['ip'];
+        if (ip == null || ip.isEmpty) {
+          ip = service.host;
+          if (ip != null && ip.endsWith('.')) {
+            ip = ip.substring(0, ip.length - 1);
+          }
+        }
 
         if (id == null || ip.isEmpty) return;
 
