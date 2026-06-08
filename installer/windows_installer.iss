@@ -60,19 +60,22 @@ Name: "{commondesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desk
 ; 开机启动
 Name: "{userstartup}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: startupicon
 
-[Registry]
-; 注册防火墙例外（允许 53317 端口）
-Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\FirewallRules"; \
-  ValueType: string; \
-  ValueName: "LanTransfer-In"; \
-  ValueData: "v2.30|Action=Allow|Active=TRUE|Dir=In|Protocol=6|LPort=53317|Name=LAN Transfer|Desc=LAN Transfer file sharing|App={app}\{#AppExeName}|"; \
-  Flags: uninsdeletevalue; MinVersion: 6.0
-
 [Run]
+; 添加防火墙入站规则（允许局域网接收）
+Filename: "netsh"; \
+  Parameters: "advfirewall firewall add rule name=""LAN Transfer"" dir=in action=allow protocol=TCP localport=53317 enable=yes"; \
+  Flags: runhidden; RunOnceId: "AddFirewallRule"
+
 ; 安装完成后启动程序
 Filename: "{app}\{#AppExeName}"; \
   Description: "立即启动 {#AppName}"; \
   Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+; 卸载时删除防火墙规则
+Filename: "netsh"; \
+  Parameters: "advfirewall firewall delete rule name=""LAN Transfer"""; \
+  Flags: runhidden
 
 [UninstallDelete]
 ; 卸载时删除 AppData 中的数据（可选）
