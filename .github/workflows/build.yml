@@ -82,6 +82,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Use fixed debug keystore
+        run: cp android/debug.keystore ~/.android/debug.keystore
+
       - name: Build APK
         run: flutter build apk --debug
 
