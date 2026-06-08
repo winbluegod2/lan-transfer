@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../providers/app_provider.dart';
 import '../core/models/device_info.dart';
 import '../core/utils/network_utils.dart';
@@ -19,6 +20,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
+  bool _wakelockOn = false;
+
+  Future<void> _toggleWakelock() async {
+    final next = !_wakelockOn;
+    await WakelockPlus.toggle(enable: next);
+    setState(() => _wakelockOn = next);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +115,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const Spacer(),
+              // 屏幕常亮开关（仅移动端）
+              if (Platform.isAndroid || Platform.isIOS)
+                Tooltip(
+                  message: _wakelockOn ? '关闭屏幕常亮' : '开启屏幕常亮',
+                  child: IconButton(
+                    onPressed: _toggleWakelock,
+                    icon: Icon(
+                      _wakelockOn ? Icons.brightness_high : Icons.brightness_low,
+                      size: 20,
+                      color: _wakelockOn ? Colors.amber : null,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
               // 服务状态指示
               Container(
                 padding:

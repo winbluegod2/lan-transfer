@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <!-- 屏幕常亮 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <!-- mDNS 多播（局域网自动发现） -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
     <!-- Android 12+ WiFi 近距离设备发现（mDNS/NSD 需要） -->

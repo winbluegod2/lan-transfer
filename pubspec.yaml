@@ -50,6 +50,9 @@ dependencies:
   # 文件大小格式化等
   intl: ^0.19.0
 
+  # 屏幕常亮（Android / iOS）
+  wakelock_plus: ^1.1.4
+
   # 图标
   cupertino_icons: ^1.0.8
 
