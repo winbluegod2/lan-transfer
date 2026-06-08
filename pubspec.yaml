@@ -59,11 +59,6 @@ dependencies:
   # 图标
   cupertino_icons: ^1.0.8
 
-dependency_overrides:
-  # package_info_plus 9.x requires Kotlin 2.2.0 but Flutter 3.27.4 generates
-  # settings.gradle with Kotlin 1.8.0. Pin to 8.x which is compatible.
-  package_info_plus: ^8.1.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter

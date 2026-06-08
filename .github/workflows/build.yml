@@ -79,6 +79,12 @@ jobs:
       - name: Generate platform files
         run: flutter create . --project-name lan_transfer --org com.example --platforms android
 
+      - name: Patch Kotlin version for plugin compatibility
+        run: |
+          sed -i 's/"org.jetbrains.kotlin.android" version "[^"]*"/"org.jetbrains.kotlin.android" version "2.1.0"/' android/settings.gradle
+          echo "Kotlin version in settings.gradle:"
+          grep "kotlin" android/settings.gradle | head -5
+
       - name: Install dependencies
         run: flutter pub get
 
