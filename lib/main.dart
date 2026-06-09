@@ -48,7 +48,7 @@ class LanTransferApp extends StatelessWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system,
-      navigatorObservers: [_HomeScreenState.routeObserver],
+      navigatorObservers: [homeRouteObserver],
       home: const HomeScreen(),
     );
   }

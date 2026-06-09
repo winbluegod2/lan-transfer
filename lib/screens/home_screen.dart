@@ -11,6 +11,8 @@ import 'qr_scan_screen.dart';
 import 'manual_connect_screen.dart';
 import 'settings_screen.dart';
 
+final homeRouteObserver = RouteObserver<ModalRoute<void>>();
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -19,18 +21,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with RouteAware {
-  static final RouteObserver<ModalRoute<void>> routeObserver =
-      RouteObserver<ModalRoute<void>>();
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    routeObserver.subscribe(this, ModalRoute.of(context)!);
+    homeRouteObserver.subscribe(this, ModalRoute.of(context)!);
   }
 
   @override
   void dispose() {
-    routeObserver.unsubscribe(this);
+    homeRouteObserver.unsubscribe(this);
     super.dispose();
   }
 
