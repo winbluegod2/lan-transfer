@@ -161,10 +161,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
       return;
     }
 
-    // Windows / Linux: minimize → capture full screen → restore → crop UI
+    // Windows / Linux: minimize → capture full screen → fullscreen crop UI
     await windowManager.minimize();
     await Future.delayed(const Duration(milliseconds: 400));
 
+    bool captureOk = false;
     try {
       if (Platform.isWindows) {
         final winPath = tempPath.replaceAll('/', '\\');
@@ -181,22 +182,29 @@ class _ConversationScreenState extends State<ConversationScreen> {
         ].join('; ');
         final result = await Process.run(
             'powershell', ['-NoProfile', '-Command', psScript]);
-        if (result.exitCode != 0 || !File(tempPath).existsSync()) return;
+        captureOk = result.exitCode == 0 && File(tempPath).existsSync();
       } else if (Platform.isLinux) {
         ProcessResult result = await Process.run('scrot', [tempPath]);
         if (result.exitCode != 0) {
-          result =
-              await Process.run('gnome-screenshot', ['-f', tempPath]);
+          result = await Process.run('gnome-screenshot', ['-f', tempPath]);
         }
-        if (result.exitCode != 0 || !File(tempPath).existsSync()) return;
+        captureOk = result.exitCode == 0 && File(tempPath).existsSync();
       }
-    } finally {
+    } catch (_) {}
+
+    if (!captureOk) {
       await windowManager.restore();
       await windowManager.focus();
+      return;
     }
 
-    await Future.delayed(const Duration(milliseconds: 200));
-    if (!mounted) return;
+    // 截图成功：全屏展示裁剪界面，让用户在 1:1 比例下选区
+    await windowManager.setFullScreen(true);
+    await Future.delayed(const Duration(milliseconds: 150));
+    if (!mounted) {
+      await windowManager.setFullScreen(false);
+      return;
+    }
 
     final croppedFile = await Navigator.push<File>(
       context,
@@ -205,6 +213,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
         fullscreenDialog: true,
       ),
     );
+
+    // 还原窗口
+    await windowManager.setFullScreen(false);
+    await windowManager.restore();
+    await windowManager.focus();
+
     if (croppedFile == null || !mounted) return;
 
     setState(() => _sending = true);
