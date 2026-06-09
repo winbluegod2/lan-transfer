@@ -113,16 +113,19 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       refreshDiscovery();
     } else if (state == AppLifecycleState.paused) {
-      _discovery?.stop();
+      _discovery?.stopDiscoveryOnly();
     }
   }
 
   Future<void> refreshDiscovery() async {
-    await _discovery?.stop();
-    _discovery = null;
     _nearbyDevices.clear();
     notifyListeners();
-    await _startDiscovery();
+    if (_discovery != null) {
+      // 只重启 discovery，保持 broadcast 运行，避免其他设备感知到本机下线
+      await _discovery!.restartDiscovery();
+    } else {
+      await _startDiscovery();
+    }
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────

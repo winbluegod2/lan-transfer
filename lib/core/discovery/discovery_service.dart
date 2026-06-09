@@ -92,6 +92,18 @@ class DiscoveryService {
     }
   }
 
+  /// 只停止发现（不影响广播）
+  Future<void> stopDiscoveryOnly() async {
+    await _discovery?.stop();
+    _discovery = null;
+  }
+
+  /// 只重启发现（不影响广播），避免其他设备感知到本机下线
+  Future<void> restartDiscovery() async {
+    await stopDiscoveryOnly();
+    await startDiscovery();
+  }
+
   Future<void> stop() async {
     await _broadcast?.stop();
     await _discovery?.stop();
