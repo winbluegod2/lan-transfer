@@ -13,6 +13,7 @@ import '../core/client/transfer_client.dart';
 import '../core/discovery/discovery_service.dart';
 import '../core/storage/message_store.dart';
 import '../core/utils/network_utils.dart';
+import '../core/utils/debug_logger.dart';
 
 enum ConnectionStatus { idle, connecting, connected, failed }
 
@@ -110,6 +111,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    DebugLogger.log('lifecycle: $state');
     if (state == AppLifecycleState.resumed) {
       refreshDiscovery();
     } else if (state == AppLifecycleState.paused) {
@@ -118,6 +120,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> refreshDiscovery() async {
+    DebugLogger.log('refreshDiscovery called');
     _nearbyDevices.clear();
     notifyListeners();
     if (_discovery != null) {

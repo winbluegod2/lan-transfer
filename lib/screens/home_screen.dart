@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/models/chat_message.dart';
 import '../core/models/device_info.dart';
 import '../core/utils/network_utils.dart';
+import '../core/utils/debug_logger.dart';
 import '../providers/app_provider.dart';
 import 'conversation_screen.dart';
 import 'qr_display_screen.dart';
@@ -173,6 +175,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 onDeviceTap: _openConversation,
               ),
             ),
+            // ── Debug panel（仅 debug 模式）──────────────────────────────
+            if (kDebugMode) const _DebugPanel(),
           ],
         ),
       ),
@@ -474,6 +478,113 @@ class _DeviceCard extends StatelessWidget {
               )
             : const Icon(Icons.chevron_right),
         onTap: isOnline ? () => onTap(device) : null,
+      ),
+    );
+  }
+}
+
+// ── Debug 面板（仅 debug 模式显示）────────────────────────────────────────────
+class _DebugPanel extends StatefulWidget {
+  const _DebugPanel();
+
+  @override
+  State<_DebugPanel> createState() => _DebugPanelState();
+}
+
+class _DebugPanelState extends State<_DebugPanel> {
+  bool _expanded = false;
+  List<String> _logs = DebugLogger.logs;
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    DebugLogger.stream.listen((logs) {
+      if (!mounted) return;
+      setState(() => _logs = logs);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.85),
+        border: const Border(top: BorderSide(color: Colors.green, width: 1)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 标题栏
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.bug_report, color: Colors.green, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    'DEBUG  ${_logs.length} events',
+                    style: const TextStyle(
+                        color: Colors.green,
+                        fontSize: 11,
+                        fontFamily: 'monospace'),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {
+                      DebugLogger.clear();
+                      setState(() => _logs = []);
+                    },
+                    child: const Text('CLR',
+                        style: TextStyle(
+                            color: Colors.orange,
+                            fontSize: 10,
+                            fontFamily: 'monospace')),
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(_expanded ? Icons.expand_more : Icons.expand_less,
+                      color: Colors.green, size: 16),
+                ],
+              ),
+            ),
+          ),
+          // 日志内容
+          if (_expanded)
+            SizedBox(
+              height: 180,
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+                itemCount: _logs.length,
+                itemBuilder: (_, i) {
+                  final line = _logs[i];
+                  Color color = Colors.white70;
+                  if (line.contains('ERROR')) color = Colors.red;
+                  else if (line.contains('LOST') || line.contains('DONE')) color = Colors.orange;
+                  else if (line.contains('resolved') || line.contains('started OK')) color = Colors.greenAccent;
+                  else if (line.contains('refresh') || line.contains('restart') || line.contains('lifecycle')) color = Colors.yellow;
+                  return Text(line,
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 10,
+                          fontFamily: 'monospace'));
+                },
+              ),
+            ),
+        ],
       ),
     );
   }
