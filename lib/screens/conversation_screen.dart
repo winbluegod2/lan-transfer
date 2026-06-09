@@ -198,7 +198,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
       return;
     }
 
-    // 截图成功：全屏展示裁剪界面，让用户在 1:1 比例下选区
+    // 截图成功：先还原窗口（脱离最小化），再全屏展示裁剪界面
+    await windowManager.restore();
+    await Future.delayed(const Duration(milliseconds: 100));
     await windowManager.setFullScreen(true);
     await Future.delayed(const Duration(milliseconds: 150));
     if (!mounted) {
