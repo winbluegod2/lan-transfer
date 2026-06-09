@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -34,7 +35,7 @@ class SendTask {
   bool get isError => progress == -2.0;
 }
 
-class AppProvider extends ChangeNotifier {
+class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
   DeviceInfo? _myDevice;
   final List<DeviceInfo> _nearbyDevices = [];
   final List<ChatMessage> _messages = [];
@@ -106,8 +107,28 @@ class AppProvider extends ChangeNotifier {
     await prefs.setInt('last_read_$peerId', _lastReadMs[peerId]!);
   }
 
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      refreshDiscovery();
+    } else if (state == AppLifecycleState.paused) {
+      _discovery?.stop();
+    }
+  }
+
+  Future<void> refreshDiscovery() async {
+    await _discovery?.stop();
+    _discovery = null;
+    _nearbyDevices.clear();
+    notifyListeners();
+    await _startDiscovery();
+  }
+
   // ── Init ──────────────────────────────────────────────────────────────────
   Future<void> init() async {
+    WidgetsBinding.instance.addObserver(this);
+
     // Load profile
     final prefs = await SharedPreferences.getInstance();
     _customName = prefs.getString('profile_name');
@@ -376,6 +397,7 @@ class AppProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _server.stop();
     _discovery?.stop();
     super.dispose();

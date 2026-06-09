@@ -18,7 +18,28 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with RouteAware {
+  static final RouteObserver<ModalRoute<void>> routeObserver =
+      RouteObserver<ModalRoute<void>>();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // 从子页面（如 ConversationScreen）返回时触发
+    context.read<AppProvider>().refreshDiscovery();
+  }
+
   void _openConversation(DeviceInfo device) {
     Navigator.push(
       context,
